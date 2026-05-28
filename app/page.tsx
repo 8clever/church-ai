@@ -67,6 +67,7 @@ function App() {
   const [sinGravity, setSinGravity] = useState(50);
   const [calculatedTithe, setCalculatedTithe] = useState('0.005');
   const [cancel, setCancel] = useState(() => new AbortController());
+  const [llm, setSession] = useState<Session | null>(null);
 
   // Live Blockchain Feed
   const [recentTithes, setRecentTithes] = useState([
@@ -129,17 +130,20 @@ function App() {
       return;
     }
 
-    let session: Session | null = null;
-    try {
-      setLLMDownload(0);
-      session = await loadLLM({
-        onDownload(value) {
-          setLLMDownload(value);
-        },
-      });
-    } catch (e) {
-      setError((e as Error).message);
-      return;
+    let session: Session | null = llm;
+    if (!session) {
+      try {
+        setLLMDownload(0);
+        session = await loadLLM({
+          onDownload(value) {
+            setLLMDownload(value);
+          },
+        });
+        setSession(session)
+      } catch (e) {
+        setError((e as Error).message);
+        return;
+      }
     }
 
     const history: SessionInput[] = chatLogUpd.map(i => ({ role: i.sender === "pastor" ? "assistant" : "user", content: i.text }));
