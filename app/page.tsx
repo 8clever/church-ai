@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import pastorImage from './images/pastor.png'
 import Image from 'next/image';
 import { loadLLM, SessionInput } from './ai';
 import Markdown from 'react-markdown';
@@ -10,6 +9,10 @@ import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import { useBalance, useSendTransaction } from 'wagmi';
 import { Address, formatUnits, parseUnits } from 'viem';
 import { owner } from './web3/config';
+
+// Images
+import pastorImage from './images/pastor.png'
+import Link from 'next/link';
 
 // SVG Icons for the cyber-church interface
 const CompassIcon = () => (
@@ -639,7 +642,7 @@ function App() {
               <p className="text-xs text-slate-600 mt-1">© 2026. Built by ordained minister Ivan in the name of decentralized open-source development.</p>
             </div>
             <div className="text-xs text-slate-500 max-w-sm text-center sm:text-right leading-relaxed">
-              *Disclaimer: This project is a satirical art performance and technological manifesto commenting on modern AI hype, Web3 dynamics, and developer mental health. All comparisons to physical religious bodies are purely fictional.
+              This application provides automated spiritual counseling. The creator of the platform is an officially ordained minister <span className="font-bold">(ID: 2026-05-28)</span>, ensuring that your WebGPU-driven absolution is backed by real-world credentials. 📄<Link target="_blank" className='underline-offset-2 underline font-bold' href="/certificate.png">View Ministry Credentials</Link>
             </div>
           </div>
         </div>
