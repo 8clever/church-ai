@@ -1,3 +1,5 @@
+import type { ReadableStream } from 'stream/web';
+
 const fallbackConfig = {
     "apiKey": "dummy",
     "device": "webgpu",
