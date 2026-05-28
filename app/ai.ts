@@ -25,12 +25,14 @@ export type SessionOptions = {
     signal?: AbortSignal
 }
 
-interface Session {
+export interface Session {
     promptStreaming: (input: SessionInput[], options?: SessionOptions) => ReadableStream<string>
 }
 
 /** Experimental API */
-export async function loadLLM(): Promise<Session> {
+export async function loadLLM(props: {
+    onDownload? (value: number): void
+} = {}): Promise<Session> {
     if (!('LanguageModel' in window)) {
         // @ts-ignore
         await import('prompt-api-polyfill');
@@ -38,6 +40,12 @@ export async function loadLLM(): Promise<Session> {
 
     //@ts-ignore
     const session = await LanguageModel.create({
+        monitor(m: HTMLDivElement) {
+            m.addEventListener('downloadprogress', (e) => {
+                const { loaded } = e as Event & { loaded: number }
+                props.onDownload?.(loaded * 100);
+            });
+        },
         initialPrompts: [
             {
                 role: 'system',

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { loadLLM, SessionInput } from './ai';
+import { loadLLM, Session, SessionInput } from './ai';
 import Markdown from 'react-markdown';
 import { ContextProvider } from './components/WagmiProvider';
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
@@ -60,6 +60,8 @@ function App() {
   const [showAbsolutionButton, setShowAbsolutionButton] = useState(false);
   const [mintStatus, setMintStatus] = useState<"idle" | "minted" | "minting">('idle'); // idle, minting, minted
   const [mintedTx, setMintedTx] = useState('');
+  const [error, setError] = useState<string>('');
+  const [llmDownload, setLLMDownload] = useState(0);
 
   // Tithe Calculator States
   const [sinGravity, setSinGravity] = useState(50);
@@ -127,10 +129,21 @@ function App() {
       return;
     }
 
-    const session = await loadLLM();
+    let session: Session | null = null;
+    try {
+      setLLMDownload(0);
+      session = await loadLLM({
+        onDownload(value) {
+          setLLMDownload(value);
+        },
+      });
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
+
     const history: SessionInput[] = chatLogUpd.map(i => ({ role: i.sender === "pastor" ? "assistant" : "user", content: i.text }));
     const stream = session.promptStreaming(history, { signal: cancel.signal });
-
     const out = { sender: "pastor", text: "" }
     for await (const text of stream) {
       out.text += text;
@@ -410,6 +423,17 @@ function App() {
                 </div>
               </div>
 
+              { error && (
+                <div className="mt-4 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl flex items-start space-x-3 text-xs text-slate-400">
+                  <span className="text-red-500 text-sm mt-0.5">🚨</span>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-200">LLM Error</p>
+                    <p className="leading-relaxed">
+                      {error}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start space-x-3 text-xs text-slate-400">
                 <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
                 <div className="space-y-1">
@@ -472,6 +496,10 @@ function App() {
                     <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl mr-8 text-slate-500 flex items-center space-x-2">
                       <span className="animate-bounce">⚡</span>
                       <span>Computing penance weights on local GPU.</span>
+                      {
+                        llmDownload === 100 ? null :
+                        <span>Loading {llmDownload.toFixed(2)}%</span>
+                      }
                     </div>
                   )}
                 </div>
