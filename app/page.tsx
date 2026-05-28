@@ -96,13 +96,11 @@ function App() {
   };
 
   function scrollChatDown() {
-    setTimeout(() => {
-      const $el = document.getElementById("chat-ai");
-      $el?.scrollTo({
-        behavior: "smooth",
-        top: $el.scrollHeight
-      });
-    }, 0);
+    const $el = document.getElementById("chat-ai");
+    $el?.scrollTo({
+      behavior: "smooth",
+      top: $el.scrollHeight
+    });
   }
 
   // Handle Confessional Submission
@@ -117,7 +115,6 @@ function App() {
     setIsTyping(true);
     setShowAbsolutionButton(false);
     setMintStatus('idle');
-    scrollChatDown();
     const template = sinTemplates.find(s => s.label === sinText || s.key === sinText);
     const pastorResponseText = template?.response;
     if (pastorResponseText) {
@@ -125,7 +122,6 @@ function App() {
         setChatLog(prev => [...prev, { sender: 'pastor', text: pastorResponseText }]);
         setIsTyping(false);
         setShowAbsolutionButton(true);
-        scrollChatDown();
       }, 1500)
       return;
     }
@@ -155,12 +151,10 @@ function App() {
         const offset = i.at(-1)?.sender === out.sender ? 1 : 0
         return [...i.slice(0, i.length - offset), out]
       });
-      scrollChatDown();
     }
 
     setIsTyping(false);
     setShowAbsolutionButton(true);
-    scrollChatDown();
   };
 
   const sendTx = useSendTransaction();
@@ -192,6 +186,10 @@ function App() {
     cancel.abort();
     setIsTyping(false);
   }
+
+  useEffect(() => {
+    scrollChatDown();
+  }, [ chatLog ])
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
