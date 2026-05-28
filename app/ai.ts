@@ -21,8 +21,12 @@ export type SessionInput = {
     content: string 
 }
 
+export type SessionOptions = {
+    signal?: AbortSignal
+}
+
 interface Session {
-    promptStreaming: (input: SessionInput[]) => ReadableStream<string>
+    promptStreaming: (input: SessionInput[], options?: SessionOptions) => ReadableStream<string>
 }
 
 /** Experimental API */

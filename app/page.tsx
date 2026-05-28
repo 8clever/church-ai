@@ -49,6 +49,7 @@ export default function App() {
   // Tithe Calculator States
   const [sinGravity, setSinGravity] = useState(50);
   const [calculatedTithe, setCalculatedTithe] = useState('0.005');
+  const [cancel, setCancel] = useState(() => new AbortController());
 
   // Live Blockchain Feed
   const [recentTithes, setRecentTithes] = useState([
@@ -98,6 +99,9 @@ export default function App() {
   const handleConfess = async (sinText: string) => {
     if (!sinText) return;
 
+    const cancel = new AbortController();
+    setCancel(cancel);
+    
     const chatLogUpd = [...chatLog, { sender: "user", text: sinText }];
     setChatLog(chatLogUpd)
     setIsTyping(true);
@@ -118,7 +122,7 @@ export default function App() {
 
     const session = await loadLLM();
     const history: SessionInput[] = chatLogUpd.map(i => ({ role: i.sender === "pastor" ? "assistant" : "user", content: i.text }));
-    const stream = session.promptStreaming(history);
+    const stream = session.promptStreaming(history, { signal: cancel.signal });
 
     const out = { sender: "pastor", text: "" }
     for await (const text of stream) {
@@ -153,6 +157,11 @@ export default function App() {
       setRecentTithes(prev => [newTithe, ...prev]);
     }, 2000);
   };
+
+  const handleCancel = () => {
+    cancel.abort();
+    setIsTyping(false);
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
@@ -374,12 +383,29 @@ export default function App() {
                     className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
                   />
                   <button 
-                    onClick={() => handleConfess(customSin)}
-                    disabled={!customSin}
+                    onClick={() => {
+                      if (isTyping) {
+                        handleCancel()
+                        return;
+                      }
+                      handleConfess(customSin)
+                    }}
                     className="cursor-pointer px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-sm transition-all disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    Confess
+                    {
+                      isTyping ? "Stop" : "Confess"
+                    }
                   </button>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start space-x-3 text-xs text-slate-400">
+                <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-200">First-time initialization might be slow</p>
+                  <p className="leading-relaxed">
+                    If the model weights haven't been downloaded yet, the initial startup will take longer depending on your network speed. The weights are securely saved in your browser cache for instant subsequent runs.
+                  </p>
                 </div>
               </div>
             </div>
@@ -432,13 +458,12 @@ export default function App() {
                     ))
                   )}
 
-                  {true && (
+                  {isTyping && (
                     <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl mr-8 text-slate-500 flex items-center space-x-2">
                       <span className="animate-bounce">⚡</span>
-                      <span>Computing penance weights on local GPU</span>
+                      <span>Computing penance weights on local GPU.</span>
                     </div>
                   )}
-
                 </div>
 
                 {/* Dynamic Footer for Absolution NFT Minting */}
@@ -453,7 +478,7 @@ export default function App() {
                         onClick={handleMintAbsolution}
                         className="cursor-pointer w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold rounded-2xl hover:scale-[1.01] transition-transform shadow-lg shadow-amber-500/10"
                       >
-                        Mint Absolution NFT for {calculatedTithe} ETH
+                        Mint Absolution for {calculatedTithe} ETH
                       </button>
                     )}
 
