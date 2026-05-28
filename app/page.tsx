@@ -8,8 +8,9 @@ import Markdown from 'react-markdown';
 import { ContextProvider } from './components/WagmiProvider';
 import { useAppKit, useAppKitAccount, useAppKitBalance } from '@reown/appkit/react';
 import { useQuery } from '@tanstack/react-query';
-import { useBalance } from 'wagmi';
-import { Address, formatUnits } from 'viem';
+import { useBalance, useSendTransaction } from 'wagmi';
+import { Address, formatUnits, parseUnits } from 'viem';
+import { owner } from './web3/config';
 
 // SVG Icons for the cyber-church interface
 const CompassIcon = () => (
@@ -47,7 +48,7 @@ function App() {
     if (!balanceData) return 0;
     const { value, decimals } = balanceData;
     return formatUnits(value, decimals);
-  }, [ balanceData ])
+  }, [balanceData])
 
   // Confessional States
   const [selectedSin, setSelectedSin] = useState('');
@@ -55,7 +56,7 @@ function App() {
   const [chatLog, setChatLog] = useState<{ sender: string, text: string }[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showAbsolutionButton, setShowAbsolutionButton] = useState(false);
-  const [mintStatus, setMintStatus] = useState('idle'); // idle, minting, minted
+  const [mintStatus, setMintStatus] = useState<"idle" | "minted" | "minting">('idle'); // idle, minting, minted
   const [mintedTx, setMintedTx] = useState('');
 
   // Tithe Calculator States
@@ -89,7 +90,7 @@ function App() {
     open();
   };
 
-  function scrollChatDown () {
+  function scrollChatDown() {
     setTimeout(() => {
       const $el = document.getElementById("chat-ai");
       $el?.scrollTo({
@@ -105,7 +106,7 @@ function App() {
 
     const cancel = new AbortController();
     setCancel(cancel);
-    
+
     const chatLogUpd = [...chatLog, { sender: "user", text: sinText }];
     setChatLog(chatLogUpd)
     setIsTyping(true);
@@ -133,7 +134,7 @@ function App() {
       out.text += text;
       setChatLog(i => {
         const offset = i.at(-1)?.sender === out.sender ? 1 : 0
-        return [ ...i.slice(0, i.length - offset), out ]
+        return [...i.slice(0, i.length - offset), out]
       });
       scrollChatDown();
     }
@@ -143,23 +144,29 @@ function App() {
     scrollChatDown();
   };
 
-  // Absolution NFT Minting Simulation
-  const handleMintAbsolution = () => {
-    setMintStatus('minting');
-    setTimeout(() => {
-      const txHash = '0x' + Math.random().toString(16).substr(2, 8) + '...' + Math.random().toString(16).substr(2, 8);
-      setMintedTx(txHash);
-      setMintStatus('minted');
+  const sendTx = useSendTransaction();
 
+  // Absolution NFT Minting Simulation
+  const handleMintAbsolution = async () => {
+    setMintStatus('minting');
+    try {
+      const txHash = await sendTx.mutateAsync({
+        to: owner,
+        value: parseUnits(calculatedTithe, balanceData?.decimals || 18)
+      })
+      setMintedTx(txHash);
+      setMintStatus("minted");
       const newTithe = {
         id: Date.now(),
         address: isConnected && address ? address : '0x',
         action: 'Absolution: ' + (selectedSin ? sinTemplates.find(s => s.key === selectedSin)?.label.substring(0, 30) + '...' : 'Custom Transgression'),
-        amount: `${calculatedTithe} ETH`,
+        amount: `${calculatedTithe} ${balanceData?.symbol || "ETH"}`,
         time: 'Just now'
       };
       setRecentTithes(prev => [newTithe, ...prev]);
-    }, 2000);
+    } catch {
+      setMintStatus('idle');
+    }
   };
 
   const handleCancel = () => {
@@ -169,7 +176,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
-      
+
       {/* Background Radial Glow */}
       <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-amber-500/10 via-transparent to-transparent pointer-events-none" />
       <div className="absolute top-[20%] right-[10%] w-[300px] h-[300px] bg-amber-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -178,7 +185,7 @@ function App() {
       {/* Header */}
       <header className="relative border-b border-slate-900/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          
+
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
               <span className="text-xl font-bold text-slate-950">†</span>
@@ -196,13 +203,12 @@ function App() {
             <a href="#whitepaper" className="hover:text-amber-500 transition-colors">Smart Contract</a>
           </nav>
 
-          <button 
+          <button
             onClick={handleConnectWallet}
-            className={`cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all duration-300 border ${
-              isConnected 
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20' 
+            className={`cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all duration-300 border ${isConnected
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
                 : 'bg-amber-500 text-slate-950 border-transparent hover:bg-amber-400 shadow-lg shadow-amber-500/10'
-            }`}
+              }`}
           >
             {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)} ${balanceData?.symbol}(${Number(balance).toFixed(2)})` : 'Connect Wallet'}
           </button>
@@ -211,16 +217,16 @@ function App() {
 
       {/* Hero Section */}
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20">
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mb-24">
-          
+
           {/* Left Column - Copywriting */}
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
               <span>WebGPU-Powered Decentralized Absolution</span>
             </div>
-            
+
             <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
               Confess Your Sins <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600">
@@ -233,14 +239,14 @@ function App() {
             </p>
 
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
-              <a 
-                href="#confessional" 
+              <a
+                href="#confessional"
                 className="px-8 py-4 bg-amber-500 text-slate-950 text-center rounded-2xl font-bold hover:bg-amber-400 hover:scale-[1.02] transition-all duration-200 shadow-xl shadow-amber-500/10"
               >
                 Enter Confessional
               </a>
-              <a 
-                href="#calculator" 
+              <a
+                href="#calculator"
                 className="px-8 py-4 bg-slate-900 border border-slate-800 text-center rounded-2xl font-bold text-slate-300 hover:bg-slate-850 hover:border-slate-700 transition-all"
               >
                 Submit Voluntary Tithe
@@ -268,21 +274,21 @@ function App() {
           {/* Right Column - Pastor Portrait with custom halo styling */}
           <div className="lg:col-span-5 flex justify-center">
             <div className="relative group w-80 h-80 sm:w-96 sm:h-96">
-              
+
               {/* Spinning Radiant Aura */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 opacity-30 blur-2xl group-hover:opacity-45 transition-opacity duration-500 animate-spin-slow" />
-              
+
               {/* Gold Border */}
               <div className="absolute -inset-1.5 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 p-[2px] shadow-2xl shadow-amber-500/25">
-                
+
                 {/* Inner Image Frame */}
                 <div className="w-full h-full rounded-full overflow-hidden bg-slate-950 relative border-4 border-slate-950">
-                  <Image 
+                  <Image
                     src={pastorImage}
-                    alt="Father Ivan" 
+                    alt="Father Ivan"
                     className="w-full h-full object-cover grayscale-[10%] group-hover:scale-105 transition-transform duration-500"
                   />
-                  
+
                   {/* Subtle Gradient Shadow Overlap */}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                 </div>
@@ -308,7 +314,7 @@ function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
+
             <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-8 hover:border-amber-500/20 transition-all duration-300">
               <ShieldCheckIcon />
               <h3 className="text-xl font-bold text-white mb-2">Absolute Seal of Confession</h3>
@@ -339,7 +345,7 @@ function App() {
         {/* Confessional Interactive Area */}
         <section id="confessional" className="mb-24 pt-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            
+
             {/* Left Confessional Control Block */}
             <div className="lg:col-span-5 space-y-6">
               <h2 className="text-3xl font-bold text-white">Select Your Sin to Absolve</h2>
@@ -356,11 +362,10 @@ function App() {
                       setCustomSin('');
                       handleConfess(sin.label);
                     }}
-                    className={`cursor-pointer w-full text-left p-4 rounded-2xl border text-sm font-medium transition-all duration-200 ${
-                      selectedSin === sin.key 
-                        ? 'bg-amber-500/10 border-amber-500 text-amber-400' 
+                    className={`cursor-pointer w-full text-left p-4 rounded-2xl border text-sm font-medium transition-all duration-200 ${selectedSin === sin.key
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-400'
                         : 'bg-slate-900/50 border-slate-900 text-slate-300 hover:bg-slate-900 hover:border-slate-800'
-                    }`}
+                      }`}
                   >
                     {sin.label}
                   </button>
@@ -370,8 +375,8 @@ function App() {
               <div className="border-t border-slate-900 pt-6">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Custom Transgression / Personal Confession</label>
                 <div className="flex space-x-2">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={customSin}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
@@ -386,7 +391,7 @@ function App() {
                     placeholder="e.g., I wrote a basic wrapper over ChatGPT and sold it as custom tech..."
                     className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
                   />
-                  <button 
+                  <button
                     onClick={() => {
                       if (isTyping) {
                         handleCancel()
@@ -417,7 +422,7 @@ function App() {
             {/* Right Terminal Confessional Display */}
             <div className="lg:col-span-7">
               <div className="bg-slate-950 border border-slate-900 rounded-3xl overflow-hidden shadow-2xl relative">
-                
+
                 {/* Terminal Header */}
                 <div className="bg-slate-900/60 px-6 py-4 border-b border-slate-900 flex justify-between items-center">
                   <div className="flex items-center space-x-2">
@@ -433,7 +438,7 @@ function App() {
 
                 {/* Chat Log Terminal Body */}
                 <div id="chat-ai" className="p-6 h-96 overflow-y-auto space-y-4 font-mono text-sm leading-relaxed scroller">
-                  
+
                   {chatLog.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center text-slate-600 space-y-4">
                       <CompassIcon />
@@ -444,13 +449,12 @@ function App() {
                     </div>
                   ) : (
                     chatLog.map((msg, index) => (
-                      <div 
-                        key={index} 
-                        className={`p-4 rounded-2xl ${
-                          msg.sender === 'user' 
-                            ? 'bg-slate-900/50 border border-slate-900 text-slate-300 ml-8' 
+                      <div
+                        key={index}
+                        className={`p-4 rounded-2xl ${msg.sender === 'user'
+                            ? 'bg-slate-900/50 border border-slate-900 text-slate-300 ml-8'
                             : 'bg-amber-500/5 border border-amber-500/10 text-slate-100 mr-8'
-                        }`}
+                          }`}
                       >
                         <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-sans font-bold">
                           {msg.sender === 'user' ? 'Your Transgression' : 'Pastor Ivan'}
@@ -496,9 +500,9 @@ function App() {
                       </div>
                     )}
 
-                    {mintStatus === 'printed' || mintStatus === 'minted' ? (
+                    {mintStatus === 'minted' ? (
                       <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400 space-y-2">
-                        <p className="font-bold">† Absolution NFT Successfully Minted in Base Mainnet †</p>
+                        <p className="font-bold">† Absolution Successfully Minted in Base Mainnet †</p>
                         <p className="text-xs text-slate-500 font-mono">TX Hash: {mintedTx}</p>
                       </div>
                     ) : null}
@@ -514,7 +518,7 @@ function App() {
         {/* Tithe Calculator Section */}
         <section id="calculator" className="mb-24 pt-10 border-t border-slate-900">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
+
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-white">Tithe Calculator</h2>
               <p className="text-slate-400 leading-relaxed">
@@ -527,11 +531,11 @@ function App() {
                     <span>Sin Severity (Severity Gauge)</span>
                     <span className="text-amber-500 font-bold">{sinGravity}%</span>
                   </div>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="100" 
-                    value={sinGravity} 
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={sinGravity}
                     onChange={(e) => setSinGravity(parseInt(e.target.value))}
                     className="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
                   />
@@ -546,10 +550,10 @@ function App() {
             {/* Calculator Output Display */}
             <div className="bg-slate-900/50 border border-slate-900 p-8 rounded-3xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl rounded-full" />
-              
+
               <div className="space-y-6 text-center lg:text-left">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest block">Calculated Absolution Tithe</span>
-                
+
                 <div className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
                   {calculatedTithe} <span className="text-amber-500 text-3xl">ETH</span>
                 </div>
@@ -566,13 +570,12 @@ function App() {
                 </div>
 
                 <div className="pt-2">
-                  <button 
+                  <button
                     onClick={() => {
-                      if (!isConnected) {
-                        handleConnectWallet();
-                      } else {
-                        alert('Tithe transaction simulated successfully! In production, this would trigger a MetaMask or WalletConnect modal.');
+                      if (isConnected) {
+                        return handleMintAbsolution();
                       }
+                      open();
                     }}
                     className="cursor-pointer w-full py-4 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-amber-500/30 text-white rounded-2xl font-bold transition-all text-sm uppercase tracking-wider"
                   >
@@ -638,7 +641,7 @@ function App() {
   );
 }
 
-export default function AppProviders () {
+export default function AppProviders() {
   return (
     <ContextProvider cookies={null}>
       <App />
