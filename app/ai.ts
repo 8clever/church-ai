@@ -1,12 +1,5 @@
 import type { ReadableStream } from 'stream/web';
 
-const fallbackConfig = {
-    "apiKey": "dummy",
-    "device": "webgpu",
-    "dtype": "q4f16",
-    "modelName": "onnx-community/gemma-3-1b-it-ONNX-GQA"
-};
-
 const systemPrompt = `
 You are a wise, compassionate Catholic/Orthodox priest acting as an AI spiritual counselor. Your goal is to listen to the user's sins, offer profound spiritual guidance, and assign a penance. 
 
@@ -34,9 +27,6 @@ interface Session {
 
 /** Experimental API */
 export async function loadLLM(): Promise<Session> {
-    //@ts-ignore
-    window.$BACKEND_CONFIG = fallbackConfig;
-
     if (!('LanguageModel' in window)) {
         // @ts-ignore
         await import('prompt-api-polyfill');

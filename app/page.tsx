@@ -432,10 +432,10 @@ export default function App() {
                     ))
                   )}
 
-                  {isTyping && (
+                  {true && (
                     <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl mr-8 text-slate-500 flex items-center space-x-2">
                       <span className="animate-bounce">⚡</span>
-                      <span>Computing penance weights on local GPU...</span>
+                      <span>Computing penance weights on local GPU</span>
                     </div>
                   )}
 
