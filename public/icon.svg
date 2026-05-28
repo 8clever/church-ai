@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <!-- Округленный темный фон под slate-950 -->
+  <rect width="128" height="128" rx="32" fill="#020617"/>
+  
+  <defs>
+    <!-- Контрастный золотой градиент для мелких экранов -->
+    <linearGradient id="favGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+  </defs>
+
+  <!-- Геометрия креста увеличена по толщине для читаемости в 16х16 -->
+  <g fill="url(#favGold)">
+    <!-- Вертикальная стойка -->
+    <rect x="56" y="20" width="16" height="88" rx="8" />
+    <!-- Горизонтальная перекладина -->
+    <rect x="24" y="44" width="80" height="16" rx="8" />
+  </g>
+  
+  <!-- Центральный ИИ-чип, который не сольется с общим фоном -->
+  <rect x="50" y="38" width="28" height="28" rx="6" fill="#020617" stroke="#fbbf24" stroke-width="4"/>
+  <circle cx="64" cy="52" r="4" fill="#f59e0b"/>
+</svg>
