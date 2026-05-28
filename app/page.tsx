@@ -1,10 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import pastorImage from './images/pastor.png'
 import Image from 'next/image';
 import { loadLLM, SessionInput } from './ai';
 import Markdown from 'react-markdown';
+import { ContextProvider } from './components/WagmiProvider';
+import { useAppKit, useAppKitAccount, useAppKitBalance } from '@reown/appkit/react';
+import { useQuery } from '@tanstack/react-query';
+import { useBalance } from 'wagmi';
+import { Address, formatUnits } from 'viem';
 
 // SVG Icons for the cyber-church interface
 const CompassIcon = () => (
@@ -31,11 +36,18 @@ const HeartIcon = () => (
   </svg>
 );
 
-export default function App() {
-  // Wallet Connection States
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState('');
-  const [walletBalance, setWalletBalance] = useState('0.00');
+function App() {
+  // Wallet
+  const { open } = useAppKit();
+  const { address, isConnected } = useAppKitAccount();
+  const { data: balanceData } = useBalance({
+    address: address as Address
+  });
+  const balance = useMemo(() => {
+    if (!balanceData) return 0;
+    const { value, decimals } = balanceData;
+    return formatUnits(value, decimals);
+  }, [ balanceData ])
 
   // Confessional States
   const [selectedSin, setSelectedSin] = useState('');
@@ -74,15 +86,7 @@ export default function App() {
 
   // Wallet Connection Simulation
   const handleConnectWallet = () => {
-    if (walletConnected) {
-      setWalletConnected(false);
-      setWalletAddress('');
-      setWalletBalance('0.00');
-    } else {
-      setWalletConnected(true);
-      setWalletAddress('0xIvan...92FDE');
-      setWalletBalance('1.437 ETH');
-    }
+    open();
   };
 
   function scrollChatDown () {
@@ -149,7 +153,7 @@ export default function App() {
 
       const newTithe = {
         id: Date.now(),
-        address: walletConnected ? walletAddress : '0xAnon...69a2',
+        address: isConnected && address ? address : '0x',
         action: 'Absolution: ' + (selectedSin ? sinTemplates.find(s => s.key === selectedSin)?.label.substring(0, 30) + '...' : 'Custom Transgression'),
         amount: `${calculatedTithe} ETH`,
         time: 'Just now'
@@ -195,12 +199,12 @@ export default function App() {
           <button 
             onClick={handleConnectWallet}
             className={`cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all duration-300 border ${
-              walletConnected 
+              isConnected 
                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20' 
                 : 'bg-amber-500 text-slate-950 border-transparent hover:bg-amber-400 shadow-lg shadow-amber-500/10'
             }`}
           >
-            {walletConnected ? `${walletAddress} (${walletBalance})` : 'Connect Wallet'}
+            {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)} ${balanceData?.symbol}(${Number(balance).toFixed(2)})` : 'Connect Wallet'}
           </button>
         </div>
       </header>
@@ -564,7 +568,7 @@ export default function App() {
                 <div className="pt-2">
                   <button 
                     onClick={() => {
-                      if (!walletConnected) {
+                      if (!isConnected) {
                         handleConnectWallet();
                       } else {
                         alert('Tithe transaction simulated successfully! In production, this would trigger a MetaMask or WalletConnect modal.');
@@ -572,7 +576,7 @@ export default function App() {
                     }}
                     className="cursor-pointer w-full py-4 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-amber-500/30 text-white rounded-2xl font-bold transition-all text-sm uppercase tracking-wider"
                   >
-                    {walletConnected ? 'Submit Tithe Transaction' : 'Connect Wallet to Transact'}
+                    {isConnected ? 'Submit Tithe Transaction' : 'Connect Wallet to Transact'}
                   </button>
                 </div>
               </div>
@@ -632,4 +636,12 @@ export default function App() {
 
     </div>
   );
+}
+
+export default function AppProviders () {
+  return (
+    <ContextProvider cookies={null}>
+      <App />
+    </ContextProvider>
+  )
 }
