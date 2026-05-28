@@ -482,10 +482,19 @@ function App() {
 
                     {mintStatus === 'idle' && (
                       <button
-                        onClick={handleMintAbsolution}
+                        onClick={() => {
+                          if (isConnected) {
+                            return handleMintAbsolution();
+                          }
+                          open()
+                        }}
                         className="cursor-pointer w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold rounded-2xl hover:scale-[1.01] transition-transform shadow-lg shadow-amber-500/10"
                       >
-                        Mint Absolution for {calculatedTithe} ETH
+                        {
+                          isConnected ?
+                          `Mint Absolution for ${calculatedTithe} ETH` :
+                          "Connect Wallet"
+                        }
                       </button>
                     )}
 
