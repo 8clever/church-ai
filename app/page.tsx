@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import pastorImage from './images/pastor.png'
 import Image from 'next/image';
+import { loadLLM, SessionInput } from './ai';
+import Markdown from 'react-markdown';
 
 // SVG Icons for the cyber-church interface
 const CompassIcon = () => (
@@ -82,26 +84,55 @@ export default function App() {
     }
   };
 
+  function scrollChatDown () {
+    setTimeout(() => {
+      const $el = document.getElementById("chat-ai");
+      $el?.scrollTo({
+        behavior: "smooth",
+        top: $el.scrollHeight
+      });
+    }, 0);
+  }
+
   // Handle Confessional Submission
-  const handleConfess = (sinText: string) => {
+  const handleConfess = async (sinText: string) => {
     if (!sinText) return;
 
-    const userMessage = { sender: 'user', text: sinText };
-    setChatLog([userMessage]);
+    const chatLogUpd = [...chatLog, { sender: "user", text: sinText }];
+    setChatLog(chatLogUpd)
     setIsTyping(true);
     setShowAbsolutionButton(false);
     setMintStatus('idle');
-
+    scrollChatDown();
     const template = sinTemplates.find(s => s.label === sinText || s.key === sinText);
-    const pastorResponseText = template 
-      ? template.response 
-      : `My child, garbage collection of the soul accumulates in all of us over time. Your custom transgression has been queued in our local thread pool. Remember: true penance does not require OpenAI's corporate cloud servers—your conscience is wiped clean at a local, decentralized WebGPU level. Go in peace and prevent memory leaks.`;
+    const pastorResponseText = template?.response;
+    if (pastorResponseText) {
+      setTimeout(() => {
+        setChatLog(prev => [...prev, { sender: 'pastor', text: pastorResponseText }]);
+        setIsTyping(false);
+        setShowAbsolutionButton(true);
+        scrollChatDown();
+      }, 1500)
+      return;
+    }
 
-    setTimeout(() => {
-      setChatLog(prev => [...prev, { sender: 'pastor', text: pastorResponseText }]);
-      setIsTyping(false);
-      setShowAbsolutionButton(true);
-    }, 1500);
+    const session = await loadLLM();
+    const history: SessionInput[] = chatLogUpd.map(i => ({ role: i.sender === "pastor" ? "assistant" : "user", content: i.text }));
+    const stream = session.promptStreaming(history);
+
+    const out = { sender: "pastor", text: "" }
+    for await (const text of stream) {
+      out.text += text;
+      setChatLog(i => {
+        const offset = i.at(-1)?.sender === out.sender ? 1 : 0
+        return [ ...i.slice(0, i.length - offset), out ]
+      });
+      scrollChatDown();
+    }
+
+    setIsTyping(false);
+    setShowAbsolutionButton(true);
+    scrollChatDown();
   };
 
   // Absolution NFT Minting Simulation
@@ -329,6 +360,12 @@ export default function App() {
                   <input 
                     type="text" 
                     value={customSin}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        handleConfess(customSin);
+                        setCustomSin("");
+                      }
+                    }}
                     onChange={(e) => {
                       setCustomSin(e.target.value);
                       setSelectedSin('');
@@ -365,7 +402,7 @@ export default function App() {
                 </div>
 
                 {/* Chat Log Terminal Body */}
-                <div className="p-6 h-96 overflow-y-auto space-y-4 font-mono text-sm leading-relaxed scroller">
+                <div id="chat-ai" className="p-6 h-96 overflow-y-auto space-y-4 font-mono text-sm leading-relaxed scroller">
                   
                   {chatLog.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center text-slate-600 space-y-4">
@@ -388,7 +425,9 @@ export default function App() {
                         <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-sans font-bold">
                           {msg.sender === 'user' ? 'Your Transgression' : 'Pastor Ivan'}
                         </div>
-                        <p>{msg.text}</p>
+                        <Markdown>
+                          {msg.text}
+                        </Markdown>
                       </div>
                     ))
                   )}
