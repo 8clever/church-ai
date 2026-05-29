@@ -110,8 +110,7 @@ function App() {
     const cancel = new AbortController();
     setCancel(cancel);
 
-    const chatLogUpd = [...chatLog, { sender: "user", text: sinText }];
-    setChatLog(chatLogUpd)
+    setChatLog(prev => [...prev, { sender: "user", text: sinText }])
     setIsTyping(true);
     setShowAbsolutionButton(false);
     setMintStatus('idle');
@@ -142,8 +141,7 @@ function App() {
       }
     }
 
-    const history: SessionInput[] = chatLogUpd.map(i => ({ role: i.sender === "pastor" ? "assistant" : "user", content: i.text }));
-    const stream = session.promptStreaming(history, { signal: cancel.signal });
+    const stream = session.promptStreaming(sinText, { signal: cancel.signal });
     const out = { sender: "pastor", text: "" }
     for await (const text of stream) {
       out.text += text;

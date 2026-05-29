@@ -26,7 +26,7 @@ export type SessionOptions = {
 }
 
 export interface Session {
-    promptStreaming: (input: SessionInput[], options?: SessionOptions) => ReadableStream<string>
+    promptStreaming: (input: SessionInput[] | string, options?: SessionOptions) => ReadableStream<string>
 }
 
 /** Experimental API */
