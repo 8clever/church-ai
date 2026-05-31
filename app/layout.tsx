@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Church AI",
   description: "Confess your engineering sins to a private, decentralized local AI pastor. Powered by WebGPU with zero server logging and automated smart-contract penance.",
+  other: {
+    "google-site-verification": "P0Q8__uYyW5SV7qVq-t4QKP2FaVDhFg9yLJ3Ue6Um9c"
+  }
 };
 
 export default function RootLayout({
